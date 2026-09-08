@@ -118,22 +118,22 @@ def create_run(project, token, title):
 
 
 def normalize_qase_status(status):
-    if isinstance(status, int):
-        return status if status in (0, 1, 3) else 0
     value = str(status).strip().lower()
     mapping = {
-        "passed": 1,
-        "pass": 1,
-        "success": 1,
-        "failed": 0,
-        "fail": 0,
-        "error": 0,
-        "skipped": 3,
-        "skip": 3,
-        "notrun": 3,
-        "notexecuted": 3,
+        "passed": "passed",
+        "pass": "passed",
+        "success": "passed",
+        "failed": "failed",
+        "fail": "failed",
+        "error": "failed",
+        "skipped": "skipped",
+        "skip": "skipped",
+        "notrun": "skipped",
+        "notexecuted": "skipped",
+        "blocked": "blocked",
+        "invalid": "invalid",
     }
-    return mapping.get(value, 0)
+    return mapping.get(value, "failed")
 
 
 def upload_result(project, token, run_id, case_id, status, time_seconds, stacktrace):
@@ -145,7 +145,7 @@ def upload_result(project, token, run_id, case_id, status, time_seconds, stacktr
     }
     if stacktrace:
         payload["stacktrace"] = stacktrace
-    if normalized_status == 0:
+    if normalized_status == "failed":
         payload["comment"] = "Failed in GitHub Actions"
     return http_json("POST", f"{QASE_BASE_URL}/result/{project}/{run_id}", token, payload)
 
