@@ -46,6 +46,14 @@ jobs:
           QASE_DEBUG: true
         run: dotnet test --no-build --logger "trx;LogFileName=test-results.trx"
 
+      - name: Upload Qase results
+        if: ${{ always() && secrets.QASE_TESTOPS_API_TOKEN != '' && secrets.QASE_TESTOPS_PROJECT != '' }}
+        env:
+          QASE_TESTOPS_API_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
+          QASE_TESTOPS_PROJECT: ${{ secrets.QASE_TESTOPS_PROJECT }}
+        run: |
+          python3 scripts/upload_qase.py --trx TestResults/test-results.trx --project "$QASE_TESTOPS_PROJECT" --token "$QASE_TESTOPS_API_TOKEN"
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
