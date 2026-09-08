@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib import error, request
 import xml.etree.ElementTree as ET
@@ -117,15 +117,35 @@ def create_run(project, token, title):
     return http_json("POST", f"{QASE_BASE_URL}/run/{project}", token, payload)
 
 
+def normalize_qase_status(status):
+    if isinstance(status, int):
+        return status if status in (0, 1, 3) else 0
+    value = str(status).strip().lower()
+    mapping = {
+        "passed": 1,
+        "pass": 1,
+        "success": 1,
+        "failed": 0,
+        "fail": 0,
+        "error": 0,
+        "skipped": 3,
+        "skip": 3,
+        "notrun": 3,
+        "notexecuted": 3,
+    }
+    return mapping.get(value, 0)
+
+
 def upload_result(project, token, run_id, case_id, status, time_seconds, stacktrace):
+    normalized_status = normalize_qase_status(status)
     payload = {
         "case_id": case_id,
-        "status": status,
+        "status": normalized_status,
         "time": round(time_seconds, 3),
     }
     if stacktrace:
         payload["stacktrace"] = stacktrace
-    if status == "failed":
+    if normalized_status == 0:
         payload["comment"] = "Failed in GitHub Actions"
     return http_json("POST", f"{QASE_BASE_URL}/result/{project}/{run_id}", token, payload)
 
@@ -134,7 +154,7 @@ def create_case_from_name(project, token, test_name, status, stacktrace):
     payload = {
         "title": test_name,
         "description": "Created automatically from GitHub Actions test output",
-        "status": status,
+        "status": normalize_qase_status(status),
     }
     if stacktrace:
         payload["custom_fields"] = {"error": stacktrace[:500]}
@@ -147,7 +167,7 @@ def main():
     parser.add_argument("--project", default=os.getenv("QASE_TESTOPS_PROJECT", ""), help="Qase project code")
     parser.add_argument("--token", default=os.getenv("QASE_TESTOPS_API_TOKEN", ""), help="Qase API token")
     parser.add_argument("--dry-run", action="store_true", help="Print payloads without uploading")
-    parser.add_argument("--title", default=f"GitHub Actions run {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    parser.add_argument("--title", default=f"GitHub Actions run {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')} UTC")
     args = parser.parse_args()
 
     if not args.project or not args.token:
