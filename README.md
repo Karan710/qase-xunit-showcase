@@ -134,6 +134,8 @@ This project uses the Qase REST API directly to report results to Qase instead o
 
 The reason is that the Qase XUnit reporter does not work reliably in Linux CI/CD environments, especially in GitHub Actions. In practice, the REST API approach is more predictable and easier to control in automation.
 
+This is the same issue seen in the upstream Qase workflows: the xUnit v2 reporter path is not invoked correctly on Ubuntu runners, while the same pattern may work on macOS. The Qase project documentation and CI validation workflows explicitly call out that the xUnit v2 reporter does not fire correctly on Linux runners, so this project uses the direct Qase API as the reliable Linux-compatible workaround.
+
 This repository is therefore a working example of using the Qase API from CI to publish test results even when the reporter-based path is not dependable on Linux.
 
 ## Notes
