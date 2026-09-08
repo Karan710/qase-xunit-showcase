@@ -1,0 +1,30 @@
+# Build outputs
+bin/
+obj/
+[Bb]uild/
+
+# Visual Studio / .NET
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.dbmdl
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local secrets / runtime config
+qase.config.json
+!qase.config.sample.json
+
+# Test result artifacts
+TestResults/
+*.trx
+build.log
+
+# GitHub Actions local state
+actionlint

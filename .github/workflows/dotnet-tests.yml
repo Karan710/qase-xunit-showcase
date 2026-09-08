@@ -1,0 +1,54 @@
+name: .NET tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    env:
+      DOTNET_NOLOGO: true
+      DOTNET_CLI_TELEMETRY_OPTOUT: 1
+      QASE_MODE: off
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore
+
+      - name: Build
+        run: dotnet build --no-restore
+
+      - name: Run tests without Qase reporting
+        if: ${{ secrets.QASE_TESTOPS_API_TOKEN == '' || secrets.QASE_TESTOPS_PROJECT == '' }}
+        env:
+          QASE_MODE: off
+        run: dotnet test --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Run tests with Qase reporting
+        if: ${{ secrets.QASE_TESTOPS_API_TOKEN != '' && secrets.QASE_TESTOPS_PROJECT != '' }}
+        env:
+          QASE_MODE: testops
+          QASE_TESTOPS_API_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
+          QASE_TESTOPS_PROJECT: ${{ secrets.QASE_TESTOPS_PROJECT }}
+        run: dotnet test --no-build --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-results
+          path: |
+            **/*.trx
+            TestResults/**
+          if-no-files-found: warn

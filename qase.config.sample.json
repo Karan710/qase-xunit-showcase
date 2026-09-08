@@ -1,0 +1,13 @@
+{
+  "mode": "off",
+  "environment": "local",
+  "testops": {
+    "plan": {
+      "id": 1
+    },
+    "api": {
+      "token": "<your-qase-api-token>"
+    },
+    "project": "<your-qase-project-code>"
+  }
+}
