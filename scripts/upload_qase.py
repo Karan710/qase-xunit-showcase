@@ -130,6 +130,17 @@ def upload_result(project, token, run_id, case_id, status, time_seconds, stacktr
     return http_json("POST", f"{QASE_BASE_URL}/result/{project}/{run_id}", token, payload)
 
 
+def create_case_from_name(project, token, test_name, status, stacktrace):
+    payload = {
+        "title": test_name,
+        "description": "Created automatically from GitHub Actions test output",
+        "status": status,
+    }
+    if stacktrace:
+        payload["custom_fields"] = {"error": stacktrace[:500]}
+    return http_json("POST", f"{QASE_BASE_URL}/case/{project}", token, payload)
+
+
 def main():
     parser = argparse.ArgumentParser(description="Upload xUnit TRX results to Qase")
     parser.add_argument("--trx", default="TestResults/test-results.trx", help="Path to the TRX file")
@@ -137,6 +148,12 @@ def main():
     parser.add_argument("--token", default=os.getenv("QASE_TESTOPS_API_TOKEN", ""), help="Qase API token")
     parser.add_argument("--dry-run", action="store_true", help="Print payloads without uploading")
     parser.add_argument("--title", default=f"GitHub Actions run {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
+    parser.add_argument(
+        "--strategy",
+        choices=["manual", "auto-create"],
+        default="manual",
+        help="How to handle tests without a Qase ID: manual=skip, auto-create=create a Qase case from the test name",
+    )
     args = parser.parse_args()
 
     if not args.project or not args.token:
@@ -173,14 +190,28 @@ def main():
         test_name = item["test_name"]
         case_id = TEST_CASE_IDS.get(test_name)
         if case_id is None:
-            skipped += 1
-            print(f"Skipping upload for {test_name}: no QaseIds mapping found.")
-            continue
+            if args.strategy == "manual":
+                skipped += 1
+                print(f"Manual mode: skipped {test_name} because it has no Qase ID.")
+                continue
+
+            status = "passed" if item["outcome"].lower() == "passed" else "failed"
+            created = create_case_from_name(args.project, args.token, test_name, status, item["stacktrace"])
+            if isinstance(created, dict):
+                case_data = created.get("result") or created.get("data")
+                if isinstance(case_data, dict):
+                    case_id = case_data.get("id")
+            if case_id is None:
+                skipped += 1
+                print(f"Auto-create failed for {test_name}; no case ID returned.")
+                continue
+            print(f"Auto-created Qase case for {test_name}: case {case_id}")
+
         status = "passed" if item["outcome"].lower() == "passed" else "failed"
         upload_result(args.project, args.token, run_id, case_id, status, item["duration"], item["stacktrace"])
         uploaded += 1
 
-    print(f"Uploaded {uploaded} result(s) to Qase project {args.project}. Skipped {skipped} unlinked or ignored tests.")
+    print(f"Uploaded {uploaded} result(s) to Qase project {args.project}. Skipped {skipped} manual or failed mappings.")
     if run_id is not None:
         print(f"Qase run id: {run_id}")
     return 0
