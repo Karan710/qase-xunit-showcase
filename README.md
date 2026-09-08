@@ -80,14 +80,36 @@ The project uses GitHub repository secrets such as:
 
 The sample config file at `qase.config.sample.json` is a template only; it is not meant to contain real credentials.
 
-## Local usage
+## How to use it
+
+### Prerequisites
+
+- .NET 8 SDK
+- A GitHub repository
+- Qase project code and API token
+
+### 1. Set up the required secrets
+
+Create the following repository secrets in GitHub:
+
+- `QASE_TESTOPS_API_TOKEN`
+- `QASE_TESTOPS_PROJECT`
+
+Example:
+
+```bash
+export QASE_TESTOPS_PROJECT=YOUR_PROJECT_CODE
+export QASE_TESTOPS_API_TOKEN=YOUR_QASE_TOKEN
+```
+
+### 2. Run locally
 
 ```bash
 dotnet restore
 dotnet test
 ```
 
-To run the uploader manually against a TRX file:
+### 3. Run the uploader manually
 
 ```bash
 python3 scripts/upload_qase.py \
@@ -95,6 +117,24 @@ python3 scripts/upload_qase.py \
   --project "$QASE_TESTOPS_PROJECT" \
   --token "$QASE_TESTOPS_API_TOKEN"
 ```
+
+### 4. Run in GitHub Actions
+
+Push to the repository. The workflow in [.github/workflows/dotnet-tests.yml](.github/workflows/dotnet-tests.yml) will automatically:
+
+- restore dependencies
+- run the test suite
+- generate the TRX report
+- upload the artifact
+- report results to Qase
+
+## Important note about Qase integration
+
+This project uses the Qase REST API directly to report results to Qase instead of relying on the Qase XUnit reporter package.
+
+The reason is that the Qase XUnit reporter does not work reliably in Linux CI/CD environments, especially in GitHub Actions. In practice, the REST API approach is more predictable and easier to control in automation.
+
+This repository is therefore a working example of using the Qase API from CI to publish test results even when the reporter-based path is not dependable on Linux.
 
 ## Notes
 
