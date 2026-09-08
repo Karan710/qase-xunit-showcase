@@ -28,6 +28,9 @@ def build_headers(token):
 
 def http_json(method, url, token, payload=None):
     data = None if payload is None else json.dumps(payload).encode("utf-8")
+    if payload is not None:
+        print(f"Qase API request: {method} {url}")
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
     req = request.Request(url, data=data, headers=build_headers(token), method=method)
     try:
         with request.urlopen(req, timeout=60) as resp:
