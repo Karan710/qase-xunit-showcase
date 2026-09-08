@@ -32,6 +32,9 @@ This repo has been simplified so that the test suite runs reliably in GitHub and
 in normal local CI environments without the Qase reporter breaking xUnit test
 execution.
 
+This repository is configured for GitHub Actions execution. A new push will trigger
+CI to run the .NET test suite and upload the results artifact.
+
 ## Known issue: `[Tags]` and package versioning
 
 This project originally pinned `Qase.XUnit.Reporter` to `1.1.1`, which pulls
