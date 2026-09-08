@@ -47,7 +47,7 @@ jobs:
         run: dotnet test --no-build --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload Qase results
-        if: ${{ always() && secrets.QASE_TESTOPS_API_TOKEN != '' && secrets.QASE_TESTOPS_PROJECT != '' }}
+        if: ${{ always() && env.QASE_TESTOPS_API_TOKEN != '' && env.QASE_TESTOPS_PROJECT != '' }}
         env:
           QASE_TESTOPS_API_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
           QASE_TESTOPS_PROJECT: ${{ secrets.QASE_TESTOPS_PROJECT }}
