@@ -43,6 +43,7 @@ jobs:
           QASE_MODE: testops
           QASE_TESTOPS_API_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
           QASE_TESTOPS_PROJECT: ${{ secrets.QASE_TESTOPS_PROJECT }}
+          QASE_DEBUG: true
         run: dotnet test --no-build --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results
