@@ -120,7 +120,7 @@ def create_run(project, token, title):
     return http_json("POST", f"{QASE_BASE_URL}/run/{project}", token, payload)
 
 
-def normalize_qase_status(status):
+def normalize_result_status(status):
     value = str(status).strip().lower()
     mapping = {
         "passed": "passed",
@@ -139,8 +139,27 @@ def normalize_qase_status(status):
     return mapping.get(value, "failed")
 
 
+def normalize_case_status(status):
+    value = str(status).strip().lower()
+    mapping = {
+        "passed": 1,
+        "pass": 1,
+        "success": 1,
+        "failed": 0,
+        "fail": 0,
+        "error": 0,
+        "skipped": 3,
+        "skip": 3,
+        "notrun": 3,
+        "notexecuted": 3,
+        "blocked": 0,
+        "invalid": 0,
+    }
+    return mapping.get(value, 0)
+
+
 def upload_result(project, token, run_id, case_id, status, time_seconds, stacktrace):
-    normalized_status = normalize_qase_status(status)
+    normalized_status = normalize_result_status(status)
     payload = {
         "case_id": case_id,
         "status": normalized_status,
@@ -157,7 +176,7 @@ def create_case_from_name(project, token, test_name, status, stacktrace):
     payload = {
         "title": test_name,
         "description": "Created automatically from GitHub Actions test output",
-        "status": normalize_qase_status(status),
+        "status": normalize_case_status(status),
     }
     if stacktrace:
         payload["custom_fields"] = {"error": stacktrace[:500]}
