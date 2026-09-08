@@ -1,93 +1,108 @@
 # Qase XUnit Showcase
 
-This repository is a minimal .NET 8 test project using xUnit and GitHub Actions.
-It is intentionally kept free of secrets and runtime-generated files so it can be
-opened, built, and tested cleanly in CI.
+This repository is a small .NET 8 xUnit example that demonstrates how to run automated tests and push the results into Qase TestOps in a clean, CI-friendly setup.
 
-## Requirements
+It is designed to show two things clearly:
 
-- .NET 8 SDK
+- how a .NET test project is structured for GitHub Actions
+- how Qase results can be uploaded from CI without checking secrets into source control
 
-## Run locally
+## What it does
+
+The project runs a small xUnit suite against a fake login flow and a calculator:
+
+- `UserCanLogin`
+- `InvalidPassword_ShowsError`
+- `ExperimentalFeature_NotYetTracked`
+- `AdditionTest` parameterized theory cases
+
+The tests are linked to Qase cases through the test metadata, and the build pipeline uploads the execution results to Qase after the suite runs.
+
+If a test has no pre-mapped Qase case, the uploader creates one automatically from the test name so the run still gets recorded.
+
+## How it does it
+
+### 1. .NET test project
+
+The app is a standard .NET 8 test project using xUnit.
 
 ```bash
 dotnet restore
 dotnet test
 ```
 
-## GitHub Actions
+The test project is intentionally lightweight and does not depend on a local service or database. It behaves like a clean sample project that can be run locally or in CI.
 
-The project includes a workflow at `.github/workflows/dotnet-tests.yml` that runs
-on pushes and pull requests.
+### 2. GitHub Actions CI
 
-## Secret handling
+The workflow in [.github/workflows/dotnet-tests.yml](.github/workflows/dotnet-tests.yml) does the following:
 
-The repository ignores local secret files such as `qase.config.json` and uses
-GitHub repository secrets for any future CI integrations. A sample config is
-provided at `qase.config.sample.json`, but it is not committed with real values.
+- installs the .NET SDK
+- restores dependencies
+- executes the test suite
+- writes the TRX result file
+- uploads the TRX as a workflow artifact
+- posts the results to Qase using a custom Python script
+
+This is triggered on pushes and pull requests.
+
+### 3. Qase reporting flow
+
+The repository uses a custom uploader in [scripts/upload_qase.py](scripts/upload_qase.py) to submit result data to the Qase API.
+
+The script:
+
+- reads the generated TRX file
+- extracts each executed test result
+- maps known tests to Qase case IDs
+- creates a Qase case when needed
+- creates a Qase test run
+- submits each result to the Qase API using the result endpoint
+
+The uploader is intentionally explicit about payloads so it is easier to debug API mismatches during CI.
+
+### 4. Secret hygiene and repo safety
+
+This repo keeps secrets out of source control.
+
+The following are ignored:
+
+- `qase.config.json`
+- `bin/`
+- `obj/`
+- `TestResults/`
+- generated build output and temporary artifacts
+
+The project uses GitHub repository secrets such as:
+
+- `QASE_TESTOPS_API_TOKEN`
+- `QASE_TESTOPS_PROJECT`
+
+The sample config file at `qase.config.sample.json` is a template only; it is not meant to contain real credentials.
+
+## Local usage
+
+```bash
+dotnet restore
+dotnet test
+```
+
+To run the uploader manually against a TRX file:
+
+```bash
+python3 scripts/upload_qase.py \
+  --trx TestResults/test-results.trx \
+  --project "$QASE_TESTOPS_PROJECT" \
+  --token "$QASE_TESTOPS_API_TOKEN"
+```
 
 ## Notes
 
-This repo has been simplified so that the test suite runs reliably in GitHub and
-in normal local CI environments without the Qase reporter breaking xUnit test
-execution.
+This sample focuses on a working, minimal Qase integration pattern. It is intentionally kept simple so it can be used as a reference for:
 
-This repository is configured for GitHub Actions execution. A new push will trigger
-CI to run the .NET test suite and upload the results artifact.
+- .NET 8 xUnit projects
+- GitHub Actions test execution
+- Qase TestOps result publishing
+- secure secret handling in CI
 
-## Known issue: `[Tags]` and package versioning
-
-This project originally pinned `Qase.XUnit.Reporter` to `1.1.1`, which pulls
-in a `Qase.Csharp.Commons` version that **predates the `[Tags]` attribute**
-shown in Qase's own docs — using it fails to compile with `CS0246`. The
-`.csproj` now uses a floating version (`Version="*"`) so `dotnet restore`
-picks up the latest release instead.
-
-The floating version also means `Metadata.Comment(...)` (shown in Qase's
-docs under "Comments") didn't resolve in this build's resolved package
-version, so it's removed from `UserCanLogin` here rather than left broken.
-
-**To check exactly what version you actually built against:**
-```bash
-dotnet list package
-```
-Cross-reference that against the [Qase.Csharp.Commons NuGet
-page](https://www.nuget.org/packages/Qase.Csharp.Commons) and the
-[usage.md](https://github.com/qase-tms/qase-csharp/blob/main/Qase.XUnit.Reporter/docs/usage.md)
-docs for that specific version before re-adding `[Tags(...)]` or
-`Metadata.Comment(...)` — floating `*` can pick up a different version on a
-future `dotnet restore` (e.g. after a new release ships), so what compiles
-today isn't guaranteed to stay identical without pinning to a fixed version
-once you know which one actually has the features you want.
-
-## What each test demonstrates
-
-- **`UserCanLogin`** — linked to an existing Qase case via `[QaseIds(123)]`,
-  custom title, custom field, and step tracking (`[Qase]` + `[Step]`
-  methods). Passes.
-- **`InvalidPassword_ShowsError`** — deliberately fails, so once uploaded
-  you'll see one passed and one failed result in the same run.
-- **`ExperimentalFeature_NotYetTracked`** — has `[Ignore]`, so it executes
-  locally but its result is **not** sent to Qase at all (different from
-  xUnit's own `Skip`, which *does* get reported, as "Skipped").
-- **`AdditionTest`** — a `[Theory]` with three `[InlineData]` rows; Qase
-  reports each parameter set as its own separate result under case 300.
-
-## Test cases without `[QaseIds]`
-
-If you omit `[QaseIds]` (as this project doesn't for any test, but worth
-knowing), the reporter auto-creates a case in Qase based on the test's name
-and file path, and matches the same case on subsequent runs as long as
-those don't change.
-
-## Relationship to Abhijeet's setup
-
-This project is what a working reporter-based setup looks like when the
-target framework supports it. It's useful as a reference for:
-- Confirming the config file shape/keys are correct when troubleshooting
-  someone else's `qase.config.json`
-- Any other customer/project on .NET 6+ asking "how do I use the XUnit
-  reporter"
-
-It does **not** apply directly to Abhijeet's case, since his project is on
-.NET Framework 4.x — for that, use the NUnit custom-upload sample instead.
+The project is not meant to be a production app; it is a showcase and instructional setup for Qase-driven test reporting.
