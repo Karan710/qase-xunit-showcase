@@ -52,7 +52,7 @@ jobs:
           QASE_TESTOPS_API_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
           QASE_TESTOPS_PROJECT: ${{ secrets.QASE_TESTOPS_PROJECT }}
         run: |
-          python3 scripts/upload_qase.py --trx TestResults/test-results.trx --project "$QASE_TESTOPS_PROJECT" --token "$QASE_TESTOPS_API_TOKEN" --strategy manual
+          python3 scripts/upload_qase.py --trx TestResults/test-results.trx --project "$QASE_TESTOPS_PROJECT" --token "$QASE_TESTOPS_API_TOKEN"
 
       - name: Upload test results
         if: always()

@@ -148,12 +148,6 @@ def main():
     parser.add_argument("--token", default=os.getenv("QASE_TESTOPS_API_TOKEN", ""), help="Qase API token")
     parser.add_argument("--dry-run", action="store_true", help="Print payloads without uploading")
     parser.add_argument("--title", default=f"GitHub Actions run {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} UTC")
-    parser.add_argument(
-        "--strategy",
-        choices=["manual", "auto-create"],
-        default="manual",
-        help="How to handle tests without a Qase ID: manual=skip, auto-create=create a Qase case from the test name",
-    )
     args = parser.parse_args()
 
     if not args.project or not args.token:
@@ -190,11 +184,6 @@ def main():
         test_name = item["test_name"]
         case_id = TEST_CASE_IDS.get(test_name)
         if case_id is None:
-            if args.strategy == "manual":
-                skipped += 1
-                print(f"Manual mode: skipped {test_name} because it has no Qase ID.")
-                continue
-
             status = "passed" if item["outcome"].lower() == "passed" else "failed"
             created = create_case_from_name(args.project, args.token, test_name, status, item["stacktrace"])
             if isinstance(created, dict):
@@ -203,7 +192,7 @@ def main():
                     case_id = case_data.get("id")
             if case_id is None:
                 skipped += 1
-                print(f"Auto-create failed for {test_name}; no case ID returned.")
+                print(f"Could not auto-create a Qase case for {test_name}; no case ID returned.")
                 continue
             print(f"Auto-created Qase case for {test_name}: case {case_id}")
 
@@ -211,7 +200,7 @@ def main():
         upload_result(args.project, args.token, run_id, case_id, status, item["duration"], item["stacktrace"])
         uploaded += 1
 
-    print(f"Uploaded {uploaded} result(s) to Qase project {args.project}. Skipped {skipped} manual or failed mappings.")
+    print(f"Uploaded {uploaded} result(s) to Qase project {args.project}. Skipped {skipped} failed auto-creates.")
     if run_id is not None:
         print(f"Qase run id: {run_id}")
     return 0
