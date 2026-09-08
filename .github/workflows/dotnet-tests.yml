@@ -30,13 +30,15 @@ jobs:
         run: dotnet build --no-restore
 
       - name: Run tests without Qase reporting
-        if: ${{ secrets.QASE_TESTOPS_API_TOKEN == '' || secrets.QASE_TESTOPS_PROJECT == '' }}
+        if: ${{ env.QASE_TESTOPS_API_TOKEN == '' || env.QASE_TESTOPS_PROJECT == '' }}
         env:
           QASE_MODE: off
+          QASE_TESTOPS_API_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
+          QASE_TESTOPS_PROJECT: ${{ secrets.QASE_TESTOPS_PROJECT }}
         run: dotnet test --no-build --logger "trx;LogFileName=test-results.trx"
 
       - name: Run tests with Qase reporting
-        if: ${{ secrets.QASE_TESTOPS_API_TOKEN != '' && secrets.QASE_TESTOPS_PROJECT != '' }}
+        if: ${{ env.QASE_TESTOPS_API_TOKEN != '' && env.QASE_TESTOPS_PROJECT != '' }}
         env:
           QASE_MODE: testops
           QASE_TESTOPS_API_TOKEN: ${{ secrets.QASE_TESTOPS_API_TOKEN }}
