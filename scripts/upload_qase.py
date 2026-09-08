@@ -117,7 +117,7 @@ def create_run(project, token, title):
     return http_json("POST", f"{QASE_BASE_URL}/run/{project}", token, payload)
 
 
-def upload_result(project, token, case_id, status, time_seconds, stacktrace):
+def upload_result(project, token, run_id, case_id, status, time_seconds, stacktrace):
     payload = {
         "case_id": case_id,
         "status": status,
@@ -127,7 +127,7 @@ def upload_result(project, token, case_id, status, time_seconds, stacktrace):
         payload["stacktrace"] = stacktrace
     if status == "failed":
         payload["comment"] = "Failed in GitHub Actions"
-    return http_json("POST", f"{QASE_BASE_URL}/result/{project}", token, payload)
+    return http_json("POST", f"{QASE_BASE_URL}/result/{project}/{run_id}", token, payload)
 
 
 def main():
@@ -166,6 +166,9 @@ def main():
 
     uploaded = 0
     skipped = 0
+    if run_id is None:
+        raise RuntimeError("Qase run was not created; cannot attach result payloads.")
+
     for item in results:
         test_name = item["test_name"]
         case_id = TEST_CASE_IDS.get(test_name)
@@ -174,7 +177,7 @@ def main():
             print(f"Skipping upload for {test_name}: no QaseIds mapping found.")
             continue
         status = "passed" if item["outcome"].lower() == "passed" else "failed"
-        upload_result(args.project, args.token, case_id, status, item["duration"], item["stacktrace"])
+        upload_result(args.project, args.token, run_id, case_id, status, item["duration"], item["stacktrace"])
         uploaded += 1
 
     print(f"Uploaded {uploaded} result(s) to Qase project {args.project}. Skipped {skipped} unlinked or ignored tests.")
